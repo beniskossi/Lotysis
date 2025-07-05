@@ -49,11 +49,16 @@ export interface StandardDraw {
 // Fonction utilitaire pour vérifier si une URL est accessible
 export async function checkAPIHealth(url: string = API_CONFIG.EXTERNAL_API_URL): Promise<boolean> {
   try {
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), API_CONFIG.REQUEST_TIMEOUT)
+    
     const response = await fetch(url, {
       method: 'HEAD',
       headers: API_CONFIG.DEFAULT_HEADERS,
-      signal: AbortSignal.timeout(API_CONFIG.REQUEST_TIMEOUT),
+      signal: controller.signal,
     })
+    
+    clearTimeout(timeoutId)
     return response.ok
   } catch (error) {
     console.warn('API Health Check failed:', error)

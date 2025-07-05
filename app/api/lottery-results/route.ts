@@ -219,7 +219,7 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url)
     const month = searchParams.get("month")
     const drawName = searchParams.get("draw")
-    const useRealData = searchParams.get("real") !== "false"
+    const useRealData = searchParams.get("real") === "true"
 
     console.log(`Récupération des résultats - Mois: ${month}, Tirage: ${drawName}, Données réelles: ${useRealData}`)
 
@@ -256,13 +256,20 @@ export async function GET(request: Request) {
 
     console.log(`${results.length} résultats trouvés`)
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       success: true,
       data: results,
       total: results.length,
       source: useRealData ? 'api' : 'fallback',
       cached: useRealData,
     })
+    
+    // Ajouter les headers CORS
+    response.headers.set('Access-Control-Allow-Origin', '*')
+    response.headers.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
+    response.headers.set('Access-Control-Allow-Headers', 'Content-Type')
+    
+    return response
   } catch (error) {
     console.error("Erreur API:", error)
     return NextResponse.json({ 
@@ -273,6 +280,18 @@ export async function GET(request: Request) {
       source: 'error'
     }, { status: 500 })
   }
+}
+
+// Handler pour les requêtes OPTIONS (CORS preflight)
+export async function OPTIONS(request: Request) {
+  const response = new NextResponse(null, { status: 200 })
+  
+  response.headers.set('Access-Control-Allow-Origin', '*')
+  response.headers.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
+  response.headers.set('Access-Control-Allow-Headers', 'Content-Type')
+  response.headers.set('Access-Control-Max-Age', '86400')
+  
+  return response
 }
 
 export async function POST(request: Request) {

@@ -13,21 +13,24 @@ import { Plus, Upload, Download, Trash2, Save } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { ModelManagementPanel } from "./model-management-panel"
 import { APIStatus } from "./api-status"
+import { NumberInput } from "./number-input"
+import { DrawNameSelect } from "./draw-name-select"
 
 export function AdminPanel() {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
+  const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [newResult, setNewResult] = useState({
     draw_name: "",
     date: "",
-    gagnants: "",
-    machine: "",
+    gagnants: [] as number[],
+    machine: [] as number[],
   })
   const { toast } = useToast()
 
   const handleLogin = () => {
-    // Simulation d'authentification simple
-    if (password === "admin123") {
+    // Authentification avec email et mot de passe
+    if (email === "admin@lotysis.com" && password === "LotysisAdmin2025!") {
       setIsAuthenticated(true)
       toast({
         title: "Connexion réussie",
@@ -36,14 +39,14 @@ export function AdminPanel() {
     } else {
       toast({
         title: "Erreur de connexion",
-        description: "Mot de passe incorrect.",
+        description: "Email ou mot de passe incorrect.",
         variant: "destructive",
       })
     }
   }
 
-  const handleAddResult = () => {
-    if (!newResult.draw_name || !newResult.date || !newResult.gagnants) {
+  const handleAddResult = async () => {
+    if (!newResult.draw_name || !newResult.date || newResult.gagnants.length === 0) {
       toast({
         title: "Erreur",
         description: "Veuillez remplir tous les champs obligatoires.",
@@ -52,18 +55,7 @@ export function AdminPanel() {
       return
     }
 
-    const gagnants = newResult.gagnants
-      .split(",")
-      .map((n) => Number.parseInt(n.trim()))
-      .filter((n) => !isNaN(n))
-    const machine = newResult.machine
-      ? newResult.machine
-          .split(",")
-          .map((n) => Number.parseInt(n.trim()))
-          .filter((n) => !isNaN(n))
-      : []
-
-    if (gagnants.length !== 5) {
+    if (newResult.gagnants.length !== 5) {
       toast({
         title: "Erreur",
         description: "Vous devez saisir exactement 5 numéros gagnants.",
@@ -72,19 +64,46 @@ export function AdminPanel() {
       return
     }
 
-    // Ici, vous ajouteriez la logique pour sauvegarder en base
-    toast({
-      title: "Résultat ajouté",
-      description: `Nouveau tirage ${newResult.draw_name} ajouté avec succès.`,
-    })
+    try {
+      // Appeler l'API pour sauvegarder le résultat
+      const response = await fetch('/api/lottery-results', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          draw_name: newResult.draw_name,
+          date: newResult.date,
+          gagnants: newResult.gagnants,
+          machine: newResult.machine.length === 5 ? newResult.machine : undefined,
+        })
+      })
 
-    // Réinitialiser le formulaire
-    setNewResult({
-      draw_name: "",
-      date: "",
-      gagnants: "",
-      machine: "",
-    })
+      const result = await response.json()
+
+      if (result.success) {
+        toast({
+          title: "Résultat ajouté",
+          description: `Nouveau tirage ${newResult.draw_name} ajouté avec succès.`,
+        })
+
+        // Réinitialiser le formulaire
+        setNewResult({
+          draw_name: "",
+          date: "",
+          gagnants: [],
+          machine: [],
+        })
+      } else {
+        throw new Error(result.error || 'Erreur lors de la sauvegarde')
+      }
+    } catch (error) {
+      toast({
+        title: "Erreur",
+        description: `Erreur lors de l'ajout: ${error}`,
+        variant: "destructive",
+      })
+    }
   }
 
   const handleExportData = () => {
@@ -115,20 +134,34 @@ export function AdminPanel() {
         <CardContent>
           <div className="space-y-4 max-w-md">
             <div>
+              <Label htmlFor="email">Email</Label>
+              <Input
+                id="email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="admin@lotysis.com"
+              />
+            </div>
+            <div>
               <Label htmlFor="password">Mot de passe</Label>
               <Input
                 id="password"
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="Entrez le mot de passe administrateur"
+                placeholder="Entrez le mot de passe"
                 onKeyPress={(e) => e.key === "Enter" && handleLogin()}
               />
             </div>
             <Button onClick={handleLogin} className="w-full">
               Se connecter
             </Button>
-            <p className="text-sm text-gray-500">Mot de passe de démonstration: admin123</p>
+            <div className="text-sm text-gray-500 space-y-1">
+              <p><strong>Identifiants de démonstration:</strong></p>
+              <p>Email: admin@lotysis.com</p>
+              <p>Mot de passe: LotysisAdmin2025!</p>
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -156,12 +189,10 @@ export function AdminPanel() {
           <TabsContent value="add-result" className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="draw_name">Nom du tirage *</Label>
-                <Input
-                  id="draw_name"
+                <DrawNameSelect
                   value={newResult.draw_name}
-                  onChange={(e) => setNewResult({ ...newResult, draw_name: e.target.value })}
-                  placeholder="ex: Reveil, Etoile, etc."
+                  onChange={(value) => setNewResult({ ...newResult, draw_name: value })}
+                  required
                 />
               </div>
               <div>
@@ -175,25 +206,23 @@ export function AdminPanel() {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="gagnants">Numéros gagnants * (5 numéros séparés par des virgules)</Label>
-                <Input
-                  id="gagnants"
-                  value={newResult.gagnants}
-                  onChange={(e) => setNewResult({ ...newResult, gagnants: e.target.value })}
-                  placeholder="ex: 12, 25, 34, 67, 89"
-                />
-              </div>
-              <div>
-                <Label htmlFor="machine">Numéros machine (optionnel)</Label>
-                <Input
-                  id="machine"
-                  value={newResult.machine}
-                  onChange={(e) => setNewResult({ ...newResult, machine: e.target.value })}
-                  placeholder="ex: 5, 18, 42, 73, 81"
-                />
-              </div>
+            <div className="space-y-6">
+              <NumberInput
+                label="Numéros gagnants"
+                required
+                value={newResult.gagnants}
+                onChange={(numbers) => setNewResult({ ...newResult, gagnants: numbers })}
+                maxNumbers={5}
+                placeholder="Entrez un numéro entre 1 et 90"
+              />
+              
+              <NumberInput
+                label="Numéros machine (optionnel)"
+                value={newResult.machine}
+                onChange={(numbers) => setNewResult({ ...newResult, machine: numbers })}
+                maxNumbers={5}
+                placeholder="Entrez un numéro entre 1 et 90"
+              />
             </div>
 
             <Button onClick={handleAddResult} className="flex items-center gap-2">

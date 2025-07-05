@@ -32,8 +32,8 @@ export default function LotteryAnalyzer() {
 
   useEffect(() => {
     // Mettre à jour le tirage sélectionné quand le jour change
-    const firstDraw = Object.keys(DRAW_SCHEDULE[selectedDay])[0]
-    const drawName = DRAW_SCHEDULE[selectedDay][firstDraw]
+    const firstDraw = Object.keys(DRAW_SCHEDULE[selectedDay as keyof typeof DRAW_SCHEDULE])[0]
+    const drawName = (DRAW_SCHEDULE[selectedDay as keyof typeof DRAW_SCHEDULE] as any)[firstDraw]
     setSelectedDraw(drawName)
   }, [selectedDay])
 
@@ -130,9 +130,9 @@ export default function LotteryAnalyzer() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {Object.entries(DRAW_SCHEDULE[selectedDay]).map(([time, drawName]) => (
-                    <SelectItem key={drawName} value={drawName}>
-                      {time} - {drawName}
+                  {Object.entries(DRAW_SCHEDULE[selectedDay as keyof typeof DRAW_SCHEDULE]).map(([time, drawName]) => (
+                    <SelectItem key={drawName as string} value={drawName as string}>
+                      {time} - {drawName as string}
                     </SelectItem>
                   ))}
                 </SelectContent>

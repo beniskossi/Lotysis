@@ -111,7 +111,7 @@ export class ModelStorageService {
       await this.initialize()
     }
 
-    const transaction = this.db!.beginTransaction(["models", "metadata", "compressed-data"], "readwrite")
+    const transaction = this.db!.transaction(["models", "metadata", "compressed-data"], "readwrite")
     const modelStore = transaction.objectStore("models")
     const metadataStore = transaction.objectStore("metadata")
     const compressedStore = transaction.objectStore("compressed-data")
@@ -122,7 +122,7 @@ export class ModelStorageService {
       const compressionResults: any[] = []
 
       // Sauvegarder et compresser les modèles TensorFlow.js
-      const modelUrls: { [key: string]: string } = {}
+      const modelUrls: { [key: string]: string | string[] } = {}
 
       if (modelData.lstm) {
         // Analyser la compressibilité
@@ -184,7 +184,7 @@ export class ModelStorageService {
 
           const ensembleUrl = `indexeddb://ensemble-compressed-${i}-${drawName}`
           await compressedModel.save(ensembleUrl)
-          modelUrls.ensemble.push(ensembleUrl)
+          ;(modelUrls.ensemble as string[]).push(ensembleUrl)
 
           totalOriginalSize += result.originalSize
           totalCompressedSize += result.compressedSize
@@ -281,7 +281,7 @@ export class ModelStorageService {
       await this.initialize()
     }
 
-    const transaction = this.db!.beginTransaction(["models", "compressed-data"], "readonly")
+    const transaction = this.db!.transaction(["models", "compressed-data"], "readonly")
     const modelStore = transaction.objectStore("models")
     const compressedStore = transaction.objectStore("compressed-data")
 
@@ -357,7 +357,7 @@ export class ModelStorageService {
       await this.initialize()
     }
 
-    const transaction = this.db!.beginTransaction(["metadata"], "readonly")
+    const transaction = this.db!.transaction(["metadata"], "readonly")
     const store = transaction.objectStore("metadata")
 
     try {
@@ -379,7 +379,7 @@ export class ModelStorageService {
       await this.initialize()
     }
 
-    const transaction = this.db!.beginTransaction(["metadata"], "readonly")
+    const transaction = this.db!.transaction(["metadata"], "readonly")
     const store = transaction.objectStore("metadata")
 
     try {
@@ -399,7 +399,7 @@ export class ModelStorageService {
       await this.initialize()
     }
 
-    const transaction = this.db!.beginTransaction(["models", "metadata", "compressed-data"], "readwrite")
+    const transaction = this.db!.transaction(["models", "metadata", "compressed-data"], "readwrite")
     const modelStore = transaction.objectStore("models")
     const metadataStore = transaction.objectStore("metadata")
     const compressedStore = transaction.objectStore("compressed-data")
@@ -548,7 +548,15 @@ export class ModelStorageService {
   }
 
   private async serializeModel(model: tf.LayersModel): Promise<any> {
-    const saveResult = await model.save(tf.io.withSaveHandler(async (artifacts) => artifacts))
+    const saveResult = await model.save(tf.io.withSaveHandler(async (artifacts) => {
+      return {
+        modelArtifactsInfo: {
+          dateSaved: new Date(),
+          modelTopologyType: 'JSON'
+        },
+        ...artifacts
+      }
+    }))
     return saveResult
   }
 
@@ -559,7 +567,7 @@ export class ModelStorageService {
   private async updateLastUsed(drawName: string): Promise<void> {
     if (!this.db) return
 
-    const transaction = this.db.beginTransaction(["metadata"], "readwrite")
+    const transaction = this.db.transaction(["metadata"], "readwrite")
     const store = transaction.objectStore("metadata")
 
     try {

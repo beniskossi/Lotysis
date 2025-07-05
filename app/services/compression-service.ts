@@ -90,9 +90,38 @@ export class CompressionService {
     const bits = level === "fast" ? 16 : level === "balanced" ? 8 : 4
 
     try {
-      // Utiliser la quantification TensorFlow.js
-      const quantizedModel = await tf.quantization.quantize(model, {
-        quantizationBytes: bits / 8,
+      // Quantification manuelle car tf.quantization n'est pas disponible dans cette version
+      // Simuler la quantification en réduisant la précision des poids
+      const quantizedModel = tf.sequential()
+      
+      for (const layer of model.layers) {
+        if (layer.getWeights().length > 0) {
+          const weights = layer.getWeights()
+          const quantizedWeights = weights.map(weight => {
+            return tf.tidy(() => {
+              // Quantification simple par arrondi selon le niveau de bits
+              const scale = Math.pow(2, bits - 1) - 1
+              const quantized = tf.round(tf.mul(weight, scale)).div(scale)
+              return quantized
+            })
+          })
+          
+          // Cloner la couche avec les nouveaux poids
+          const newLayer = this.cloneLayerWithWeights(layer, quantizedWeights)
+          quantizedModel.add(newLayer)
+          
+          // Nettoyer
+          quantizedWeights.forEach(w => w.dispose())
+        } else {
+          quantizedModel.add(layer)
+        }
+      }
+      
+      // Compiler le modèle quantifié
+      quantizedModel.compile({
+        optimizer: model.optimizer || "adam",
+        loss: model.loss || "meanSquaredError",
+        metrics: model.metrics || [],
       })
 
       return { model: quantizedModel, bits }
@@ -222,23 +251,39 @@ export class CompressionService {
 
   private cloneLayerWithWeights(originalLayer: tf.layers.Layer, newWeights: tf.Tensor[]): tf.layers.Layer {
     // Créer une nouvelle couche similaire avec les nouveaux poids
-    const config = originalLayer.getConfig()
+    const config = originalLayer.getConfig() as any
 
     // Créer la nouvelle couche
     let newLayer: tf.layers.Layer
 
     switch (originalLayer.getClassName()) {
       case "Dense":
-        newLayer = tf.layers.dense(config)
+        newLayer = tf.layers.dense({
+          units: config.units,
+          activation: config.activation,
+          useBias: config.useBias,
+          ...config
+        })
         break
       case "LSTM":
-        newLayer = tf.layers.lstm(config)
+        newLayer = tf.layers.lstm({
+          units: config.units,
+          returnSequences: config.returnSequences,
+          ...config
+        })
         break
       case "Conv2D":
-        newLayer = tf.layers.conv2d(config)
+        newLayer = tf.layers.conv2d({
+          filters: config.filters,
+          kernelSize: config.kernelSize,
+          ...config
+        })
         break
       case "Dropout":
-        newLayer = tf.layers.dropout(config)
+        newLayer = tf.layers.dropout({
+          rate: config.rate || 0.5,
+          ...config
+        })
         break
       default:
         // Pour les autres types de couches, essayer de les créer dynamiquement
@@ -290,7 +335,7 @@ export class CompressionService {
       }
 
       return {
-        compressed: compressed.buffer,
+        compressed: compressed.buffer as ArrayBuffer,
         originalSize,
         compressedSize: compressed.length,
       }
@@ -298,7 +343,7 @@ export class CompressionService {
       console.warn("Compression gzip échouée, utilisation des données non compressées:", error)
       const buffer = new TextEncoder().encode(jsonString).buffer
       return {
-        compressed: buffer,
+        compressed: buffer as ArrayBuffer,
         originalSize,
         compressedSize: buffer.byteLength,
       }

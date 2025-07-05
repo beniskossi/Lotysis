@@ -218,7 +218,7 @@ export class WebGLCompressionService {
       const compressionTime = performance.now() - startTime
 
       return {
-        compressedData,
+        compressedData: compressedData as ArrayBuffer,
         compressionTime,
         gpuMemoryUsed,
         parallelOps,

@@ -4,6 +4,30 @@ import * as tf from "@tensorflow/tfjs"
 import { ModelStorageService } from "./model-storage-service"
 import { EnhancedCompressionService } from "./enhanced-compression-service"
 
+interface ModelData {
+  lstm?: tf.LayersModel
+  cnn?: tf.LayersModel
+  ensemble?: tf.LayersModel[]
+  scaler?: { min: number[]; max: number[] }
+  version: string
+  drawName: string
+  trainingDataHash: string
+  createdAt?: number
+  lastUsed?: number
+  performance?: {
+    accuracy: number
+    loss: number
+    trainingTime: number
+  }
+  compression?: {
+    originalSize: number
+    compressedSize: number
+    compressionRatio: number
+    method: string
+    level: "fast" | "balanced" | "maximum"
+  }
+}
+
 interface DrawResult {
   draw_name: string
   date: string
@@ -221,11 +245,11 @@ export class MLPredictionService {
     }
 
     try {
-      const modelData = {
-        lstm: this.lstmModel,
-        cnn: this.cnnModel,
+      const modelData: Partial<ModelData> = {
+        lstm: this.lstmModel || undefined,
+        cnn: this.cnnModel || undefined,
         ensemble: this.ensembleModels,
-        scaler: this.scaler,
+        scaler: this.scaler || undefined,
         version: Date.now().toString(),
         drawName: drawName,
         trainingDataHash: this.lastTrainingData,
@@ -257,10 +281,10 @@ export class MLPredictionService {
         return true
       }
 
-      this.lstmModel = modelData.lstm
-      this.cnnModel = modelData.cnn
+      this.lstmModel = modelData.lstm || null
+      this.cnnModel = modelData.cnn || null
       this.ensembleModels = modelData.ensemble || []
-      this.scaler = modelData.scaler
+      this.scaler = modelData.scaler || null
       this.lastTrainingData = modelData.trainingDataHash || ""
 
       this.modelVersions.set(drawName, modelData.version || "unknown")

@@ -12,6 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Plus, Upload, Download, Trash2, Save } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { ModelManagementPanel } from "./model-management-panel"
+import { APIStatus } from "./api-status"
 
 export function AdminPanel() {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
@@ -253,6 +254,7 @@ export function AdminPanel() {
 
           <TabsContent value="settings" className="space-y-4">
             <div className="space-y-4">
+              <APIStatus />
               <Card>
                 <CardHeader>
                   <CardTitle>Configuration API</CardTitle>

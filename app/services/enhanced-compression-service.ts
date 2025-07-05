@@ -347,9 +347,17 @@ export class EnhancedCompressionService {
   }
 
   private async serializeModel(model: tf.LayersModel): Promise<ArrayBuffer> {
-    const saveResult = await model.save(tf.io.withSaveHandler(async (artifacts) => artifacts))
+    const saveResult = await model.save(tf.io.withSaveHandler(async (artifacts) => {
+      return {
+        modelArtifactsInfo: {
+          dateSaved: new Date(),
+          modelTopologyType: 'JSON'
+        },
+        ...artifacts
+      }
+    }))
     const jsonString = JSON.stringify(saveResult)
-    return new TextEncoder().encode(jsonString).buffer
+    return new TextEncoder().encode(jsonString).buffer as ArrayBuffer
   }
 
   private async deserializeModel(data: ArrayBuffer): Promise<tf.LayersModel> {

@@ -151,8 +151,8 @@ export function DrawPredictions({ drawName, data, getNumberColor }: DrawPredicti
     })
 
     // Random Forest - Patterns et associations
-    const randomNumbers = []
-    const usedRanges = new Set()
+    const randomNumbers: number[] = []
+    const usedRanges = new Set<number>()
 
     // Sélectionner des numéros de différentes tranches
     while (randomNumbers.length < 5) {
@@ -177,7 +177,7 @@ export function DrawPredictions({ drawName, data, getNumberColor }: DrawPredicti
 
     // LSTM - Tendances temporelles
     const recentNumbers = data.slice(0, 5).flatMap((r) => r.gagnants)
-    const lstmNumbers = []
+    const lstmNumbers: number[] = []
 
     // Mélanger et sélectionner 5 numéros récents avec variation
     const shuffled = [...new Set(recentNumbers)].sort(() => Math.random() - 0.5)

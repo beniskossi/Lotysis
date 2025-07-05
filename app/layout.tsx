@@ -11,7 +11,6 @@ export const metadata: Metadata = {
   title: "Analyseur de Loterie - PWA",
   description: "Application d'analyse avancée des résultats de loterie avec prédictions IA",
   manifest: "/manifest.json",
-  themeColor: "#2563eb",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
@@ -24,13 +23,17 @@ export const metadata: Metadata = {
     icon: "/icon-192x192.png",
     apple: "/icon-192x192.png",
   },
-  viewport: {
+  generator: 'v0.dev'
+}
+
+export function generateViewport() {
+  return {
     width: "device-width",
     initialScale: 1,
     maximumScale: 1,
     userScalable: false,
-  },
-    generator: 'v0.dev'
+    themeColor: "#2563eb",
+  }
 }
 
 export default function RootLayout({

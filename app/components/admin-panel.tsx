@@ -15,6 +15,7 @@ import { ModelManagementPanel } from "./model-management-panel"
 import { APIStatus } from "./api-status"
 import { NumberInput } from "./number-input"
 import { DrawNameSelect } from "./draw-name-select"
+import { BatchInputPanel } from "./batch-input-panel"
 
 export function AdminPanel() {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
@@ -179,8 +180,9 @@ export function AdminPanel() {
       </CardHeader>
       <CardContent>
         <Tabs defaultValue="add-result" className="space-y-4">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="add-result">Ajouter Résultat</TabsTrigger>
+            <TabsTrigger value="batch-input">Saisie en Lot</TabsTrigger>
             <TabsTrigger value="manage-data">Gérer Données</TabsTrigger>
             <TabsTrigger value="models">Modèles ML</TabsTrigger>
             <TabsTrigger value="settings">Paramètres</TabsTrigger>
@@ -214,6 +216,9 @@ export function AdminPanel() {
                 onChange={(numbers) => setNewResult({ ...newResult, gagnants: numbers })}
                 maxNumbers={5}
                 placeholder="Entrez un numéro entre 1 et 90"
+                persistKey={`admin_gagnants_${newResult.draw_name}_${newResult.date}`}
+                allowHistory={true}
+                quickInput={true}
               />
               
               <NumberInput
@@ -222,6 +227,9 @@ export function AdminPanel() {
                 onChange={(numbers) => setNewResult({ ...newResult, machine: numbers })}
                 maxNumbers={5}
                 placeholder="Entrez un numéro entre 1 et 90"
+                persistKey={`admin_machine_${newResult.draw_name}_${newResult.date}`}
+                allowHistory={true}
+                quickInput={true}
               />
             </div>
 
@@ -229,6 +237,10 @@ export function AdminPanel() {
               <Plus className="h-4 w-4" />
               Ajouter le résultat
             </Button>
+          </TabsContent>
+
+          <TabsContent value="batch-input">
+            <BatchInputPanel />
           </TabsContent>
 
           <TabsContent value="manage-data" className="space-y-4">

@@ -46,34 +46,6 @@ export function useDrawData() {
   const refreshData = () => {
     fetchData()
   }
-  
-  const fetchRealData = async () => {
-    setLoading(true)
-    setError(null)
-
-    try {
-      // Essayer de récupérer les vraies données
-      const response = await fetch('/api/lottery-results?real=true')
-      
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`)
-      }
-      
-      const result = await response.json()
-      
-      if (result.success) {
-        setDrawResults(result.data || [])
-      } else {
-        throw new Error(result.error || 'Failed to fetch real data')
-      }
-    } catch (err) {
-      setError("Erreur lors du chargement des vraies données")
-      console.error("Erreur API réelle:", err)
-      setDrawResults([])
-    } finally {
-      setLoading(false)
-    }
-  }
 
   useEffect(() => {
     fetchData()
@@ -84,6 +56,5 @@ export function useDrawData() {
     loading,
     error,
     refreshData,
-    fetchRealData,
   }
 }

@@ -1,4 +1,4 @@
-import { supabase, LotteryResultService } from './app/lib/supabase'
+import { supabase, LotteryResultService } from '../../lib/supabase'
 
 async function migrateExistingData() {
   const response = await fetch('/api/lottery-results?real=false')

@@ -1,8 +1,8 @@
 "use client"
 
 import React from 'react'
-import { supabase } from './supabase'
-import { LotteryResult } from './supabase'
+import { supabase } from '../../lib/supabase'
+import { LotteryResult } from '../../lib/supabase'
 
 export interface RealtimeNotification {
   id: string

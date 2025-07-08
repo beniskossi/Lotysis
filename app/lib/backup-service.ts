@@ -1,4 +1,4 @@
-import { LotteryResultService, MLModelService, PredictionService } from './supabase'
+import { LotteryResultService, MLModelService, PredictionService } from '../../lib/supabase'
 import { AuditService } from './logger'
 
 export interface BackupData {

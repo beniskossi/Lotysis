@@ -103,7 +103,7 @@ Si vous avez des données existantes, voici comment les migrer :
 ### Script de Migration
 
 ```typescript
-import { supabase, LotteryResultService } from './app/lib/supabase'
+import { supabase, LotteryResultService } from './lib/supabase'
 
 async function migrateExistingData() {
   // 1. Récupérer les données depuis l'API existante

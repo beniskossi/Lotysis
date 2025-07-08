@@ -18,7 +18,7 @@ import {
   Settings, Users, Database, Shield, 
   Activity, RefreshCw, AlertTriangle,
   CheckCircle, Clock, Server, Monitor,
-  FileText, Sync, Lock, Unlock,
+  FileText, Lock, Unlock, HardDrive,
   Eye, EyeOff, Key, UserPlus,
   BarChart3, TrendingUp, AlertCircle
 } from "lucide-react"
@@ -622,7 +622,7 @@ export function AdminPanel() {
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <Sync className="h-5 w-5" />
+<RefreshCw className="h-5 w-5" />
                   Synchronisation des données
                 </CardTitle>
               </CardHeader>
@@ -770,7 +770,7 @@ export function AdminPanel() {
                   </div>
 
                   <Button onClick={handleSyncData} variant="outline" className="flex items-center gap-2">
-                    <Sync className="h-4 w-4" />
+<RefreshCw className="h-4 w-4" />
                     Synchroniser API
                   </Button>
 

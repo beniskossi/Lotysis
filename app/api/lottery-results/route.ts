@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { requireServiceRoleKey } from "../../../lib/supabase"
+import { requireServiceRoleKey } from '../../../lib/supabase'
 
 // Interface pour les résultats de tirage
 interface DrawResult {

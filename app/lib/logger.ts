@@ -1,25 +1,21 @@
-import winston from 'winston'
-
-// Configuration du logger
-const logger = winston.createLogger({
-  level: 'info',
-  format: winston.format.combine(
-    winston.format.timestamp(),
-    winston.format.errors({ stack: true }),
-    winston.format.json()
-  ),
-  transports: [
-    // Écriture dans des fichiers
-    new winston.transports.File({ filename: 'logs/error.log', level: 'error' }),
-    new winston.transports.File({ filename: 'logs/combined.log' }),
-  ],
-})
-
-// En développement, on ajoute aussi la console
-if (process.env.NODE_ENV !== 'production') {
-  logger.add(new winston.transports.Console({
-    format: winston.format.simple()
-  }))
+// Simple browser-compatible logger
+const logger = {
+  info: (message: string, ...args: any[]) => {
+    if (process.env.NODE_ENV !== 'production') {
+      console.log(`[INFO] ${new Date().toISOString()} - ${message}`, ...args)
+    }
+  },
+  error: (message: string, ...args: any[]) => {
+    console.error(`[ERROR] ${new Date().toISOString()} - ${message}`, ...args)
+  },
+  warn: (message: string, ...args: any[]) => {
+    console.warn(`[WARN] ${new Date().toISOString()} - ${message}`, ...args)
+  },
+  debug: (message: string, ...args: any[]) => {
+    if (process.env.NODE_ENV !== 'production') {
+      console.debug(`[DEBUG] ${new Date().toISOString()} - ${message}`, ...args)
+    }
+  }
 }
 
 // Interface pour les logs d'audit

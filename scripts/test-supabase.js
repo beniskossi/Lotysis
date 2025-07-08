@@ -1,22 +1,35 @@
 import { createClient } from '@supabase/supabase-js'
+import dotenv from 'dotenv'
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-)
+dotenv.config({ path: '.env.local' })
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+if (!supabaseUrl || !supabaseAnonKey) {
+  throw new Error('Supabase environment variables are missing!')
+}
+
+const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
 // Test de connexion
 async function testConnection() {
-  const { data, error } = await supabase
-    .from('draw_schedules')
-    .select('*')
-    .limit(5)
-    
-  if (error) {
-    console.error('❌ Erreur de connexion:', error)
-  } else {
-    console.log('✅ Connexion réussie!')
-    console.log('📅 Planning des tirages:', data)
+  try {
+    const { data, error } = await supabase
+      .from('lottery_results')
+      .select('id')
+      .limit(1)
+      
+    if (error) {
+      console.error('❌ Error fetching data:', error.message)
+      process.exit(1)
+    } else {
+      console.log('✅ Connection successful:', data)
+      process.exit(0)
+    }
+  } catch (err) {
+    console.error('❌ Error during connection test:', err.message)
+    process.exit(1)
   }
 }
 

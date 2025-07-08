@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server"
+import { requireServiceRoleKey } from "../../../lib/supabase"
 
 // Interface pour les résultats de tirage
 interface DrawResult {
@@ -358,18 +359,41 @@ export async function POST(request: Request) {
       }, { status: 400 })
     }
 
-    // TODO: En production, sauvegarder dans une base de données
-    // const { data, error } = await supabase
-    //   .from('lottery_results')
-    //   .insert([{ draw_name, date, gagnants, machine }])
+    // En production, sauvegarder dans une base de données
+    try {
+      const supabaseAdmin = requireServiceRoleKey();
+      const { data, error } = await supabaseAdmin
+        .from('lottery_results')
+        .insert([{ draw_name, date, gagnants, machine }])
+        .select()
 
-    console.log('Résultat validé et prêt pour la sauvegarde:', { draw_name, date, gagnants, machine })
+      if (error) {
+        if (error.message.includes('duplicate key value')) {
+          return NextResponse.json({ 
+            success: false, 
+            error: "Conflit de données - Nom de tirage et date déjà existants" 
+          }, { status: 400 })
+        } else {
+          return NextResponse.json({ 
+            success: false, 
+            error: "Erreur de la base de données" 
+          }, { status: 500 })
+        }
+      }
 
-    return NextResponse.json({
-      success: true,
-      message: "Résultat validé avec succès (sauvegarde non implémentée)",
-      data: { draw_name, date, gagnants, machine }
-    })
+      return NextResponse.json({
+        success: true,
+        message: "Résultat ajouté avec succès",
+        data: data ? data : []
+      })
+
+    } catch (err) {
+      console.error("Erreur lors de l'ajout du résultat:", err)
+      return NextResponse.json({ 
+        success: false, 
+        error: "Erreur serveur lors de l'ajout du résultat" 
+      }, { status: 500 })
+    }
   } catch (error) {
     console.error("Erreur POST:", error)
     return NextResponse.json({ 

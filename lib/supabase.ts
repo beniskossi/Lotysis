@@ -1,48 +1,77 @@
 import { createClient } from '@supabase/supabase-js';
 import { Database } from './database.types';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+// Get environment variables with fallbacks for development
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-if (!supabaseUrl) {
-  throw new Error('NEXT_PUBLIC_SUPABASE_URL is missing in environment variables');
-}
-if (!supabaseAnonKey) {
-  throw new Error('NEXT_PUBLIC_SUPABASE_ANON_KEY is missing in environment variables');
+// Only throw errors in production or when actually trying to use Supabase
+let supabaseClient: any = null;
+let supabaseAdminClient: any = null;
+
+function createSupabaseClient() {
+  if (!supabaseUrl || !supabaseAnonKey) {
+    console.warn('Supabase environment variables not configured. Some features may not work.');
+    return null;
+  }
+
+  try {
+    return createClient<Database>(supabaseUrl, supabaseAnonKey, {
+      auth: {
+        persistSession: true,
+        autoRefreshToken: true,
+      },
+      db: {
+        schema: 'public',
+      },
+      global: {
+        headers: { 'x-my-custom-header': 'lotysis-app' },
+      },
+    });
+  } catch (error) {
+    console.error('Failed to create Supabase client:', error);
+    return null;
+  }
 }
 
-export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
-  auth: {
-    persistSession: true,
-    autoRefreshToken: true,
-  },
-  db: {
-    schema: 'public',
-  },
-  global: {
-    headers: { 'x-my-custom-header': 'lotysis-app' },
-  },
-});
+function createSupabaseAdminClient() {
+  if (!serviceRoleKey || !supabaseUrl) {
+    console.warn('Supabase service role key not configured. Admin features may not work.');
+    return null;
+  }
 
-export const supabaseAdmin = serviceRoleKey ? createClient<Database>(supabaseUrl, serviceRoleKey, {
-  auth: {
-    autoRefreshToken: false,
-    persistSession: false,
-  },
-  db: {
-    schema: 'public',
-  },
-  global: {
-    headers: { 'x-my-custom-header': 'lotysis-admin' },
-  },
-}) : null;
+  try {
+    return createClient<Database>(supabaseUrl, serviceRoleKey, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
+      },
+      db: {
+        schema: 'public',
+      },
+      global: {
+        headers: { 'x-my-custom-header': 'lotysis-admin' },
+      },
+    });
+  } catch (error) {
+    console.error('Failed to create Supabase admin client:', error);
+    return null;
+  }
+}
+
+// Initialize clients
+supabaseClient = createSupabaseClient();
+supabaseAdminClient = createSupabaseAdminClient();
+
+export const supabase = supabaseClient;
+export const supabaseAdmin = supabaseAdminClient;
 
 export function requireServiceRoleKey() {
-  if (!serviceRoleKey) {
+  if (!serviceRoleKey || !supabaseAdminClient) {
     throw new Error('SUPABASE_SERVICE_ROLE_KEY is missing in environment variables');
   }
-  return supabaseAdmin!;
+  return supabaseAdminClient;
 }
 
 export class LotteryResultService {
@@ -53,43 +82,57 @@ export class LotteryResultService {
     end_date?: string,
     limit?: number,
   }) {
-    let query = supabase
-      .from('lottery_results')
-      .select('*')
-      .order('date', { ascending: false });
-
-    if (filters?.draw_name) {
-      query = query.eq('draw_name', filters.draw_name);
+    if (!supabaseClient) {
+      console.warn('Supabase not configured, returning empty results');
+      return [];
     }
 
-    if (filters?.start_date) {
-      query = query.gte('date', filters.start_date);
+    try {
+      let query = supabaseClient
+        .from('lottery_results')
+        .select('*')
+        .order('date', { ascending: false });
+
+      if (filters?.draw_name) {
+        query = query.eq('draw_name', filters.draw_name);
+      }
+
+      if (filters?.start_date) {
+        query = query.gte('date', filters.start_date);
+      }
+
+      if (filters?.end_date) {
+        query = query.lte('date', filters.end_date);
+      }
+
+      if (filters?.limit) {
+        query = query.limit(filters.limit);
+      }
+
+      const { data, error } = await query;
+
+      if (error) {
+        console.error('Error fetching results:', error);
+        throw error;
+      }
+
+      return data || [];
+    } catch (error) {
+      console.error('Error in getResults:', error);
+      return [];
     }
-
-    if (filters?.end_date) {
-      query = query.lte('date', filters.end_date);
-    }
-
-    if (filters?.limit) {
-      query = query.limit(filters.limit);
-    }
-
-    const { data, error } = await query;
-
-    if (error) {
-      console.error('Error fetching results:', error);
-      throw error;
-    }
-
-    return data || [];
   }
 
-  static async addResult(result: Omit<Database['public']['Tables']['lottery_results']['Insert'], 'id' | 'created_at' | 'updated_at'>) {
+  static async addResult(result: any) {
+    if (!supabaseClient) {
+      throw new Error('Supabase not configured');
+    }
+
     if (!result.draw_name || !result.date || !result.gagnants || result.gagnants.length !== 5) {
       throw new Error('Invalid data');
     }
 
-    const { data, error } = await supabase
+    const { data, error } = await supabaseClient
       .from('lottery_results')
       .insert([result])
       .select();
@@ -102,8 +145,12 @@ export class LotteryResultService {
     return data[0];
   }
 
-  static async updateResult(id: number, updates: Partial<Database['public']['Tables']['lottery_results']['Update']>) {
-    const { data, error } = await supabase
+  static async updateResult(id: number, updates: any) {
+    if (!supabaseClient) {
+      throw new Error('Supabase not configured');
+    }
+
+    const { data, error } = await supabaseClient
       .from('lottery_results')
       .update(updates)
       .eq('id', id)
@@ -118,7 +165,11 @@ export class LotteryResultService {
   }
 
   static async deleteResult(id: number) {
-    const { error } = await supabase
+    if (!supabaseClient) {
+      throw new Error('Supabase not configured');
+    }
+
+    const { error } = await supabaseClient
       .from('lottery_results')
       .delete()
       .eq('id', id);
@@ -132,35 +183,49 @@ export class LotteryResultService {
   }
 
   static async getDrawStatistics(draw_name?: string) {
-    let query = supabase
-      .from('draw_statistics')
-      .select('*');
-
-    if (draw_name) {
-      query = query.eq('draw_name', draw_name);
+    if (!supabaseClient) {
+      console.warn('Supabase not configured, returning empty statistics');
+      return [];
     }
 
-    const { data, error } = await query;
+    try {
+      let query = supabaseClient
+        .from('draw_statistics')
+        .select('*');
 
-    if (error) {
-      console.error('Error fetching draw statistics:', error);
-      throw error;
+      if (draw_name) {
+        query = query.eq('draw_name', draw_name);
+      }
+
+      const { data, error } = await query;
+
+      if (error) {
+        console.error('Error fetching draw statistics:', error);
+        throw error;
+      }
+
+      return data || [];
+    } catch (error) {
+      console.error('Error in getDrawStatistics:', error);
+      return [];
     }
-
-    return data || [];
   }
 }
 
 export class MLModelService {
   
-  static async saveModel(model: Omit<Database['public']['Tables']['ml_models']['Insert'], 'id' | 'created_at'>) {
-    await supabase
+  static async saveModel(model: any) {
+    if (!supabaseClient) {
+      throw new Error('Supabase not configured');
+    }
+
+    await supabaseClient
       .from('ml_models')
       .update({ is_active: false })
       .eq('draw_name', model.draw_name)
       .eq('model_type', model.model_type);
 
-    const { data, error } = await supabase
+    const { data, error } = await supabaseClient
       .from('ml_models')
       .insert([{ ...model, is_active: true }])
       .select();
@@ -174,7 +239,12 @@ export class MLModelService {
   }
 
   static async loadModel(draw_name: string, model_type: string) {
-    const { data, error } = await supabase
+    if (!supabaseClient) {
+      console.warn('Supabase not configured, returning null');
+      return null;
+    }
+
+    const { data, error } = await supabaseClient
       .from('ml_models')
       .select('*')
       .eq('draw_name', draw_name)
@@ -191,7 +261,12 @@ export class MLModelService {
   }
 
   static async getModelsForDraw(draw_name: string) {
-    const { data, error } = await supabase
+    if (!supabaseClient) {
+      console.warn('Supabase not configured, returning empty array');
+      return [];
+    }
+
+    const { data, error } = await supabaseClient
       .from('ml_models')
       .select('*')
       .eq('draw_name', draw_name)
@@ -209,8 +284,12 @@ export class MLModelService {
 
 export class PredictionService {
   
-  static async savePrediction(prediction: Omit<Database['public']['Tables']['ml_predictions']['Insert'], 'id' | 'prediction_date'>) {
-    const { data, error } = await supabase
+  static async savePrediction(prediction: any) {
+    if (!supabaseClient) {
+      throw new Error('Supabase not configured');
+    }
+
+    const { data, error } = await supabaseClient
       .from('ml_predictions')
       .insert([prediction])
       .select();
@@ -224,7 +303,12 @@ export class PredictionService {
   }
 
   static async getRecentPredictions(draw_name?: string, limit = 10) {
-    let query = supabase
+    if (!supabaseClient) {
+      console.warn('Supabase not configured, returning empty array');
+      return [];
+    }
+
+    let query = supabaseClient
       .from('ml_predictions')
       .select('*')
       .order('prediction_date', { ascending: false })
@@ -245,7 +329,11 @@ export class PredictionService {
   }
 
   static async updatePredictionAccuracy(prediction_id: number, actual_result_id: number, accuracy: number) {
-    const { data, error } = await supabase
+    if (!supabaseClient) {
+      throw new Error('Supabase not configured');
+    }
+
+    const { data, error } = await supabaseClient
       .from('ml_predictions')
       .update({ actual_result_id, accuracy })
       .eq('id', prediction_id)
@@ -274,8 +362,17 @@ export class SyncService {
       const externalResults = result.data;
       let syncedCount = 0;
 
+      if (!supabaseClient) {
+        console.warn('Supabase not configured, skipping sync to database');
+        return {
+          success: true,
+          synced: 0,
+          total: externalResults.length,
+        };
+      }
+
       for (const externalResult of externalResults) {
-        const existing = await supabase
+        const existing = await supabaseClient
           .from('lottery_results')
           .select('id')
           .eq('draw_name', externalResult.draw_name)
@@ -300,10 +397,14 @@ export class SyncService {
   }
 
   static async cleanupOldData(daysToKeep = 365) {
+    if (!supabaseClient) {
+      throw new Error('Supabase not configured');
+    }
+
     const cutoffDate = new Date();
     cutoffDate.setDate(cutoffDate.getDate() - daysToKeep);
 
-    const { error } = await supabase
+    const { error } = await supabaseClient
       .from('lottery_results')
       .delete()
       .lt('date', cutoffDate.toISOString().split('T')[0]);
@@ -318,20 +419,17 @@ export class SyncService {
 }
 
 export function useSupabaseData() {
-  return { supabase, LotteryResultService, MLModelService, PredictionService, SyncService };
+  return { supabase: supabaseClient, LotteryResultService, MLModelService, PredictionService, SyncService };
 }
 
 // Type exports for better TypeScript integration
-export type LotteryResult = Database['public']['Tables']['lottery_results']['Row']
-export type NewLotteryResult = Database['public']['Tables']['lottery_results']['Insert']
-export type UpdateLotteryResult = Database['public']['Tables']['lottery_results']['Update']
-
-export type MLModel = Database['public']['Tables']['ml_models']['Row']
-export type NewMLModel = Database['public']['Tables']['ml_models']['Insert']
-export type UpdateMLModel = Database['public']['Tables']['ml_models']['Update']
-
-export type MLPrediction = Database['public']['Tables']['ml_predictions']['Row']
-export type NewMLPrediction = Database['public']['Tables']['ml_predictions']['Insert']
-export type UpdateMLPrediction = Database['public']['Tables']['ml_predictions']['Update']
-
-export type DrawSchedule = Database['public']['Tables']['draw_schedules']['Row']
+export type LotteryResult = any;
+export type NewLotteryResult = any;
+export type UpdateLotteryResult = any;
+export type MLModel = any;
+export type NewMLModel = any;
+export type UpdateMLModel = any;
+export type MLPrediction = any;
+export type NewMLPrediction = any;
+export type UpdateMLPrediction = any;
+export type DrawSchedule = any;

@@ -14,7 +14,6 @@ export function useDrawData() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-
   const fetchData = async () => {
     setLoading(true)
     setError(null)

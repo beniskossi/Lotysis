@@ -38,7 +38,7 @@
     "@radix-ui/react-toggle": "latest",
     "@radix-ui/react-toggle-group": "latest",
     "@radix-ui/react-tooltip": "latest",
-    "@supabase/supabase-js": "^2.50.3",
+    "@supabase/supabase-js": "^2.50.4",
     "@tensorflow/tfjs": "latest",
     "autoprefixer": "^10.4.20",
     "chart.js": "^4.5.0",
